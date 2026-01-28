@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown Memo - Obsidian風メモアプリ</title>
+  <!-- marked.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    /* ===== CSS Variables ===== */
+    :root {
+      /* Light mode colors */
+      --bg-primary: #ffffff;
+      --bg-secondary: #f5f5f5;
+      --bg-sidebar: #fafafa;
+      --text-primary: #333333;
+      --text-secondary: #666666;
+      --border-color: #e0e0e0;
+      --accent-color: #7c3aed;
+      --accent-hover: #6d28d9;
+      --note-hover: #eeeeee;
+      --note-active: #e8e0f7;
+      --button-danger: #dc2626;
+      --button-danger-hover: #b91c1c;
+      --scrollbar-thumb: #c0c0c0;
+      --scrollbar-track: #f0f0f0;
+      --code-bg: #f4f4f4;
+      --blockquote-border: #7c3aed;
+      --blockquote-bg: #f9f7ff;
+    }
+
+    [data-theme="dark"] {
+      /* Dark mode colors */
+      --bg-primary: #1e1e1e;
+      --bg-secondary: #252525;
+      --bg-sidebar: #1a1a1a;
+      --text-primary: #e0e0e0;
+      --text-secondary: #a0a0a0;
+      --border-color: #3a3a3a;
+      --accent-color: #a78bfa;
+      --accent-hover: #8b5cf6;
+      --note-hover: #2d2d2d;
+      --note-active: #3d3357;
+      --button-danger: #ef4444;
+      --button-danger-hover: #dc2626;
+      --scrollbar-thumb: #555555;
+      --scrollbar-track: #2a2a2a;
+      --code-bg: #2d2d2d;
+      --blockquote-border: #a78bfa;
+      --blockquote-bg: #2a2640;
+    }
+
+    /* ===== Reset & Base Styles ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* ===== Scrollbar Styles ===== */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--scrollbar-track);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-secondary);
+    }
+
+    /* ===== Layout ===== */
+    .app-container {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      width: 250px;
+      min-width: 200px;
+      background-color: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      transition: background-color 0.3s, border-color 0.3s;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .sidebar-header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--accent-color);
+    }
+
+    .sidebar-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background-color: var(--accent-color);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background-color: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--note-hover);
+    }
+
+    .btn-icon {
+      padding: 8px;
+      background: transparent;
+      color: var(--text-secondary);
+    }
+
+    .btn-icon:hover {
+      color: var(--text-primary);
+      background-color: var(--note-hover);
+    }
+
+    /* ===== Notes List ===== */
+    .notes-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .note-item {
+      padding: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 4px;
+      transition: background-color 0.2s;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .note-item:hover {
+      background-color: var(--note-hover);
+    }
+
+    .note-item.active {
+      background-color: var(--note-active);
+    }
+
+    .note-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .note-title {
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    .note-date {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .note-delete {
+      opacity: 0;
+      background: none;
+      border: none;
+      color: var(--button-danger);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 16px;
+      transition: opacity 0.2s, background-color 0.2s;
+    }
+
+    .note-item:hover .note-delete {
+      opacity: 1;
+    }
+
+    .note-delete:hover {
+      background-color: rgba(220, 38, 38, 0.1);
+    }
+
+    /* ===== Main Content ===== */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    /* ===== Editor Header ===== */
+    .editor-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background-color: var(--bg-secondary);
+    }
+
+    .title-input {
+      flex: 1;
+      padding: 8px 12px;
+      font-size: 16px;
+      font-weight: 500;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .title-input:focus {
+      border-color: var(--accent-color);
+    }
+
+    .theme-toggle {
+      font-size: 20px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 6px;
+      transition: background-color 0.2s;
+    }
+
+    .theme-toggle:hover {
+      background-color: var(--note-hover);
+    }
+
+    /* ===== Editor Area ===== */
+    .editor-area {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .editor-pane,
+    .preview-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .editor-pane {
+      border-right: 1px solid var(--border-color);
+    }
+
+    .pane-header {
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      background-color: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .editor-textarea {
+      flex: 1;
+      padding: 16px;
+      font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      border: none;
+      resize: none;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      outline: none;
+    }
+
+    .preview-content {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      background-color: var(--bg-primary);
+    }
+
+    /* ===== Markdown Preview Styles ===== */
+    .preview-content h1,
+    .preview-content h2,
+    .preview-content h3,
+    .preview-content h4,
+    .preview-content h5,
+    .preview-content h6 {
+      margin-top: 24px;
+      margin-bottom: 16px;
+      font-weight: 600;
+      line-height: 1.25;
+    }
+
+    .preview-content h1 { font-size: 2em; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3em; }
+    .preview-content h2 { font-size: 1.5em; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3em; }
+    .preview-content h3 { font-size: 1.25em; }
+    .preview-content h4 { font-size: 1em; }
+
+    .preview-content p {
+      margin-bottom: 16px;
+      line-height: 1.7;
+    }
+
+    .preview-content a {
+      color: var(--accent-color);
+      text-decoration: none;
+    }
+
+    .preview-content a:hover {
+      text-decoration: underline;
+    }
+
+    .preview-content code {
+      font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+      font-size: 0.9em;
+      padding: 2px 6px;
+      background-color: var(--code-bg);
+      border-radius: 4px;
+    }
+
+    .preview-content pre {
+      background-color: var(--code-bg);
+      padding: 16px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+    }
+
+    .preview-content pre code {
+      padding: 0;
+      background: none;
+    }
+
+    .preview-content blockquote {
+      border-left: 4px solid var(--blockquote-border);
+      padding: 12px 16px;
+      margin: 0 0 16px 0;
+      background-color: var(--blockquote-bg);
+      border-radius: 0 6px 6px 0;
+    }
+
+    .preview-content ul,
+    .preview-content ol {
+      margin-bottom: 16px;
+      padding-left: 24px;
+    }
+
+    .preview-content li {
+      margin-bottom: 8px;
+      line-height: 1.6;
+    }
+
+    .preview-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+    }
+
+    .preview-content th,
+    .preview-content td {
+      border: 1px solid var(--border-color);
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    .preview-content th {
+      background-color: var(--bg-secondary);
+      font-weight: 600;
+    }
+
+    .preview-content hr {
+      border: none;
+      border-top: 1px solid var(--border-color);
+      margin: 24px 0;
+    }
+
+    .preview-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    /* ===== Empty State ===== */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-secondary);
+      text-align: center;
+      padding: 40px;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .empty-state-text {
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    .empty-state-hint {
+      font-size: 13px;
+      opacity: 0.7;
+    }
+
+    /* ===== Hidden File Input ===== */
+    .hidden-input {
+      display: none;
+    }
+
+    /* ===== Responsive Design ===== */
+    @media (max-width: 900px) {
+      .sidebar {
+        width: 200px;
+        min-width: 180px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .app-container {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        min-width: 100%;
+        height: auto;
+        max-height: 40vh;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .editor-area {
+        flex-direction: column;
+      }
+
+      .editor-pane {
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        min-height: 200px;
+      }
+
+      .preview-pane {
+        min-height: 200px;
+      }
+    }
+
+    /* ===== Sidebar Footer ===== */
+    .sidebar-footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      gap: 8px;
+    }
+
+    .sidebar-footer .btn {
+      flex: 1;
+      font-size: 12px;
+      padding: 6px 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>📝 Markdown Memo</h1>
+        <div class="sidebar-actions">
+          <button class="btn btn-primary" id="newNoteBtn" title="新規ノート作成">
+            + 新規ノート
+          </button>
+        </div>
+      </div>
+      <div class="notes-list" id="notesList">
+        <!-- ノート一覧がここに動的に表示される -->
+      </div>
+      <div class="sidebar-footer">
+        <button class="btn btn-secondary" id="exportBtn" title="全ノートをエクスポート">
+          📤 エクスポート
+        </button>
+        <button class="btn btn-secondary" id="importBtn" title="ノートをインポート">
+          📥 インポート
+        </button>
+        <input type="file" id="importFile" class="hidden-input" accept=".json">
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="editor-header">
+        <input
+          type="text"
+          class="title-input"
+          id="noteTitle"
+          placeholder="ノートタイトル..."
+          disabled
+        >
+        <button class="theme-toggle" id="themeToggle" title="テーマ切り替え">
+          🌙
+        </button>
+      </div>
+      <div class="editor-area" id="editorArea">
+        <!-- Empty state (shown when no note is selected) -->
+        <div class="empty-state" id="emptyState">
+          <div class="empty-state-icon">📝</div>
+          <div class="empty-state-text">ノートが選択されていません</div>
+          <div class="empty-state-hint">左のサイドバーからノートを選択するか、<br>「新規ノート」をクリックして作成してください</div>
+        </div>
+
+        <!-- Editor (hidden by default) -->
+        <div class="editor-pane" id="editorPane" style="display: none;">
+          <div class="pane-header">エディタ (Markdown)</div>
+          <textarea
+            class="editor-textarea"
+            id="noteContent"
+            placeholder="マークダウンで記述..."
+          ></textarea>
+        </div>
+        <div class="preview-pane" id="previewPane" style="display: none;">
+          <div class="pane-header">プレビュー</div>
+          <div class="preview-content" id="previewContent"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // ===== Application State =====
+    const APP_STORAGE_KEY = 'markdown-memo-data';
+
+    let state = {
+      notes: [],
+      activeNoteId: null,
+      theme: 'light'
+    };
+
+    // ===== DOM Elements =====
+    const elements = {
+      notesList: document.getElementById('notesList'),
+      noteTitle: document.getElementById('noteTitle'),
+      noteContent: document.getElementById('noteContent'),
+      previewContent: document.getElementById('previewContent'),
+      emptyState: document.getElementById('emptyState'),
+      editorPane: document.getElementById('editorPane'),
+      previewPane: document.getElementById('previewPane'),
+      newNoteBtn: document.getElementById('newNoteBtn'),
+      exportBtn: document.getElementById('exportBtn'),
+      importBtn: document.getElementById('importBtn'),
+      importFile: document.getElementById('importFile'),
+      themeToggle: document.getElementById('themeToggle')
+    };
+
+    // ===== Utility Functions =====
+
+    /**
+     * Generate a unique ID for notes
+     * @returns {string} Unique identifier
+     */
+    function generateId() {
+      return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    }
+
+    /**
+     * Format date for display
+     * @param {string} dateString - ISO date string
+     * @returns {string} Formatted date string
+     */
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('ja-JP', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     * @param {string} text - Text to escape
+     * @returns {string} Escaped text
+     */
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ===== Storage Functions =====
+
+    /**
+     * Save state to localStorage
+     */
+    function saveToStorage() {
+      try {
+        const data = {
+          notes: state.notes,
+          theme: state.theme
+        };
+        localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(data));
+      } catch (error) {
+        console.error('Failed to save to localStorage:', error);
+        alert('データの保存に失敗しました。ストレージの空き容量を確認してください。');
+      }
+    }
+
+    /**
+     * Load state from localStorage
+     */
+    function loadFromStorage() {
+      try {
+        const data = localStorage.getItem(APP_STORAGE_KEY);
+        if (data) {
+          const parsed = JSON.parse(data);
+          state.notes = parsed.notes || [];
+          state.theme = parsed.theme || 'light';
+        }
+      } catch (error) {
+        console.error('Failed to load from localStorage:', error);
+        state.notes = [];
+        state.theme = 'light';
+      }
+    }
+
+    // ===== Note Management Functions =====
+
+    /**
+     * Create a new note
+     * @returns {object} New note object
+     */
+    function createNote() {
+      const now = new Date().toISOString();
+      const note = {
+        id: generateId(),
+        title: '新しいノート',
+        content: '',
+        createdAt: now,
+        updatedAt: now
+      };
+      state.notes.unshift(note);
+      saveToStorage();
+      return note;
+    }
+
+    /**
+     * Update the active note
+     * @param {object} updates - Fields to update
+     */
+    function updateActiveNote(updates) {
+      const note = state.notes.find(n => n.id === state.activeNoteId);
+      if (note) {
+        Object.assign(note, updates, { updatedAt: new Date().toISOString() });
+        saveToStorage();
+      }
+    }
+
+    /**
+     * Delete a note by ID
+     * @param {string} noteId - Note ID to delete
+     */
+    function deleteNote(noteId) {
+      const index = state.notes.findIndex(n => n.id === noteId);
+      if (index > -1) {
+        state.notes.splice(index, 1);
+        if (state.activeNoteId === noteId) {
+          state.activeNoteId = state.notes.length > 0 ? state.notes[0].id : null;
+        }
+        saveToStorage();
+      }
+    }
+
+    /**
+     * Get a note by ID
+     * @param {string} noteId - Note ID
+     * @returns {object|undefined} Note object
+     */
+    function getNoteById(noteId) {
+      return state.notes.find(n => n.id === noteId);
+    }
+
+    // ===== Render Functions =====
+
+    /**
+     * Render the notes list in sidebar
+     */
+    function renderNotesList() {
+      if (state.notes.length === 0) {
+        elements.notesList.innerHTML = `
+          <div class="empty-state" style="padding: 20px;">
+            <div class="empty-state-text" style="font-size: 13px;">ノートがありません</div>
+          </div>
+        `;
+        return;
+      }
+
+      elements.notesList.innerHTML = state.notes.map(note => `
+        <div class="note-item ${note.id === state.activeNoteId ? 'active' : ''}" data-id="${note.id}">
+          <div class="note-info">
+            <div class="note-title">${escapeHtml(note.title) || '無題'}</div>
+            <div class="note-date">${formatDate(note.updatedAt)}</div>
+          </div>
+          <button class="note-delete" data-id="${note.id}" title="ノートを削除">×</button>
+        </div>
+      `).join('');
+
+      // Add event listeners to note items
+      elements.notesList.querySelectorAll('.note-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          if (!e.target.classList.contains('note-delete')) {
+            selectNote(item.dataset.id);
+          }
+        });
+      });
+
+      // Add event listeners to delete buttons
+      elements.notesList.querySelectorAll('.note-delete').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (confirm('このノートを削除しますか？')) {
+            deleteNote(btn.dataset.id);
+            renderNotesList();
+            renderEditor();
+          }
+        });
+      });
+    }
+
+    /**
+     * Render the editor and preview
+     */
+    function renderEditor() {
+      const note = getNoteById(state.activeNoteId);
+
+      if (!note) {
+        // Show empty state
+        elements.emptyState.style.display = 'flex';
+        elements.editorPane.style.display = 'none';
+        elements.previewPane.style.display = 'none';
+        elements.noteTitle.value = '';
+        elements.noteTitle.disabled = true;
+        return;
+      }
+
+      // Show editor
+      elements.emptyState.style.display = 'none';
+      elements.editorPane.style.display = 'flex';
+      elements.previewPane.style.display = 'flex';
+      elements.noteTitle.disabled = false;
+
+      // Update editor content
+      elements.noteTitle.value = note.title;
+      elements.noteContent.value = note.content;
+
+      // Update preview
+      renderPreview(note.content);
+    }
+
+    /**
+     * Render markdown preview
+     * @param {string} markdown - Markdown content
+     */
+    function renderPreview(markdown) {
+      try {
+        // Configure marked options
+        marked.setOptions({
+          breaks: true,
+          gfm: true
+        });
+        elements.previewContent.innerHTML = marked.parse(markdown || '');
+      } catch (error) {
+        console.error('Failed to parse markdown:', error);
+        elements.previewContent.innerHTML = '<p style="color: red;">マークダウンの解析に失敗しました</p>';
+      }
+    }
+
+    // ===== Action Functions =====
+
+    /**
+     * Select a note by ID
+     * @param {string} noteId - Note ID to select
+     */
+    function selectNote(noteId) {
+      state.activeNoteId = noteId;
+      renderNotesList();
+      renderEditor();
+    }
+
+    /**
+     * Handle new note button click
+     */
+    function handleNewNote() {
+      const note = createNote();
+      selectNote(note.id);
+      elements.noteTitle.focus();
+      elements.noteTitle.select();
+    }
+
+    /**
+     * Export all notes to JSON file
+     */
+    function exportNotes() {
+      if (state.notes.length === 0) {
+        alert('エクスポートするノートがありません。');
+        return;
+      }
+
+      try {
+        const exportData = {
+          notes: state.notes,
+          exportedAt: new Date().toISOString(),
+          version: '1.0'
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `markdown-memo-export-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Failed to export notes:', error);
+        alert('エクスポートに失敗しました。');
+      }
+    }
+
+    /**
+     * Import notes from JSON file
+     * @param {File} file - JSON file to import
+     */
+    function importNotes(file) {
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+
+          // Validate imported data
+          if (!data.notes || !Array.isArray(data.notes)) {
+            throw new Error('Invalid file format');
+          }
+
+          // Validate each note
+          const validNotes = data.notes.filter(note => {
+            return note.id && typeof note.title === 'string' && typeof note.content === 'string';
+          }).map(note => ({
+            id: note.id,
+            title: note.title,
+            content: note.content,
+            createdAt: note.createdAt || new Date().toISOString(),
+            updatedAt: note.updatedAt || new Date().toISOString()
+          }));
+
+          if (validNotes.length === 0) {
+            throw new Error('No valid notes found');
+          }
+
+          // Ask user how to handle import
+          const importMode = confirm(
+            `${validNotes.length}件のノートをインポートします。\n\n` +
+            `OK: 既存のノートに追加\n` +
+            `キャンセル: 既存のノートを全て置き換え`
+          );
+
+          if (importMode) {
+            // Merge: Add imported notes to existing
+            const existingIds = new Set(state.notes.map(n => n.id));
+            const newNotes = validNotes.filter(n => !existingIds.has(n.id));
+            state.notes = [...newNotes, ...state.notes];
+          } else {
+            // Replace: Replace all existing notes
+            state.notes = validNotes;
+            state.activeNoteId = null;
+          }
+
+          saveToStorage();
+          renderNotesList();
+
+          // Select first note if available
+          if (state.notes.length > 0 && !state.activeNoteId) {
+            selectNote(state.notes[0].id);
+          } else {
+            renderEditor();
+          }
+
+          alert(`${validNotes.length}件のノートをインポートしました。`);
+        } catch (error) {
+          console.error('Failed to import notes:', error);
+          alert('インポートに失敗しました。有効なJSONファイルを選択してください。');
+        }
+      };
+
+      reader.onerror = () => {
+        alert('ファイルの読み込みに失敗しました。');
+      };
+
+      reader.readAsText(file);
+    }
+
+    /**
+     * Toggle theme between light and dark
+     */
+    function toggleTheme() {
+      state.theme = state.theme === 'light' ? 'dark' : 'light';
+      applyTheme();
+      saveToStorage();
+    }
+
+    /**
+     * Apply current theme to document
+     */
+    function applyTheme() {
+      document.documentElement.setAttribute('data-theme', state.theme);
+      elements.themeToggle.textContent = state.theme === 'light' ? '🌙' : '☀️';
+      elements.themeToggle.title = state.theme === 'light' ? 'ダークモードに切り替え' : 'ライトモードに切り替え';
+    }
+
+    // ===== Event Listeners =====
+
+    /**
+     * Initialize event listeners
+     */
+    function initEventListeners() {
+      // New note button
+      elements.newNoteBtn.addEventListener('click', handleNewNote);
+
+      // Title input
+      elements.noteTitle.addEventListener('input', (e) => {
+        updateActiveNote({ title: e.target.value });
+        renderNotesList();
+      });
+
+      // Content textarea
+      elements.noteContent.addEventListener('input', (e) => {
+        updateActiveNote({ content: e.target.value });
+        renderPreview(e.target.value);
+      });
+
+      // Export button
+      elements.exportBtn.addEventListener('click', exportNotes);
+
+      // Import button
+      elements.importBtn.addEventListener('click', () => {
+        elements.importFile.click();
+      });
+
+      // File input
+      elements.importFile.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          importNotes(file);
+          e.target.value = ''; // Reset file input
+        }
+      });
+
+      // Theme toggle
+      elements.themeToggle.addEventListener('click', toggleTheme);
+
+      // Keyboard shortcuts
+      document.addEventListener('keydown', (e) => {
+        // Ctrl/Cmd + N: New note
+        if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+          e.preventDefault();
+          handleNewNote();
+        }
+        // Ctrl/Cmd + S: Save (already auto-saved, but prevent default)
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+          e.preventDefault();
+        }
+      });
+    }
+
+    // ===== Initialization =====
+
+    /**
+     * Initialize the application
+     */
+    function init() {
+      // Load data from storage
+      loadFromStorage();
+
+      // Apply theme
+      applyTheme();
+
+      // Initialize event listeners
+      initEventListeners();
+
+      // Render initial UI
+      renderNotesList();
+
+      // Select first note if available
+      if (state.notes.length > 0) {
+        selectNote(state.notes[0].id);
+      } else {
+        renderEditor();
+      }
+
+      console.log('Markdown Memo initialized');
+    }
+
+    // Start the application
+    init();
+  </script>
+</body>
+</html>
